@@ -22,13 +22,4 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.7.1" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Contracts\Cart\" />
-    <Folder Include="Contracts\CartProduct\" />
-    <Folder Include="Features\CartProducts\Command\" />
-    <Folder Include="Features\CartProducts\Query\" />
-    <Folder Include="Features\Carts\Command\" />
-    <Folder Include="Features\Carts\Query\" />
-  </ItemGroup>
-
 </Project>

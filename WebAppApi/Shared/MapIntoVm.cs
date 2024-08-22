@@ -42,7 +42,8 @@ namespace WebAppApi.Shared
                 cartProduct.CartId,
                 cartProduct.ProductId,
                 CartToCartVm(cartProduct.Cart),
-                ProductToProductVm(cartProduct.Product)
+                ProductToProductVm(cartProduct.Product),
+                cartProduct.Quantity
                 );
         }
     }

@@ -3,6 +3,11 @@ using WebAppApi.Features.Users;
 using WebAppApi.Features.Products.Command;
 using WebAppApi.Features.Products.Query;
 using Microsoft.AspNetCore.Mvc;
+using WebAppApi.Features.Carts.Command;
+using WebAppApi.Features.Carts.Query;
+using WebAppApi.Features.CartProducts.Command;
+using WebAppApi.Features.CartProducts.Query;
+// using WebAppApi.Features.CartProducts.Query;
 
 public static class EndpointMappings
 {
@@ -24,11 +29,30 @@ public static class EndpointMappings
         GetAllProducts.MapGetAllProductsEndpoint(app);
     }
 
+    public static void MapCartEndpoints(this WebApplication app)
+    {
+        CreateCart.MapCreateCartEndpoint(app);
+        UpdateCart.MapUpdateCartEndpoint(app);
+        DeleteCart.MapDeleteCartEndpoint(app);
+        GetCartById.MapGetCartByIdEndpoint(app);
+        GetAllCarts.MapGetAllCartsEndpoint(app);
+    }
+
+    public static void MapCartProductEndpoints(this WebApplication app)
+    {
+        CreateCartProduct.MapCreateCartProductEndpoint(app);
+        UpdateCartProduct.MapUpdateCartProductEndpoint(app);
+        DeleteCartProduct.MapDeleteCartProductEndpoint(app);
+        GetCartProductById.MapGetCartProductByIdEndpoint(app);
+        GetAllCartProducts.MapGetAllCartProductsEndpoint(app); 
+    }
 
     public static void MapEndpoints(this WebApplication app)
     {
         app.MapUserEndpoints();
         app.MapProductEndpoints();
-        // Aggiungi altre entità se necessario
+        app.MapCartEndpoints();
+        app.MapCartProductEndpoints();
     }
+
 }

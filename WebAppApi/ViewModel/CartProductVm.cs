@@ -4,6 +4,7 @@
         int CartId,
         int ProductId,
         CartVm Cart,
-        ProductVm Product
+        ProductVm Product,
+        int Quantity
         );
 }

@@ -6,6 +6,6 @@ namespace WebAppApi.ViewModel
         int CartId,
         UserVm User,
         bool IsDeleted,
-        List<CartProductVm> CartProducts
+        List<CartProductVm>? CartProducts = null
     );
 }
