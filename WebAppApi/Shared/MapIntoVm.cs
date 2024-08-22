@@ -5,25 +5,25 @@ namespace WebAppApi.Shared
 {
     public class MapIntoVm
     {
-        public static CartVm CartToCartVm(Cart cart)
+        public static CartVm CartToCartVm(Cart cart, bool mapUser = true)
         {
             return new CartVm(
                 cart.CartId,
-                UserToUserVm(cart.User),
+                mapUser ? UserToUserVm(cart.User, false) : null, // Evita la ricorsione passando false
                 cart.IsDeleted,
-                cart.CartProducts.Select(cp => CartProductToCartProductVm(cp)).ToList()
-                );
+                cart.CartProducts.Select(cp => CartProductToCartProductVm(cp, false)).ToList() // Passa false per evitare ricorsione
+            );
         }
 
-        public static UserVm UserToUserVm(User user)
+        public static UserVm UserToUserVm(User user, bool mapCart = true)
         {
             return new UserVm(
                 user.UserId,
                 user.UserName,
                 user.Email,
                 user.IsDeleted,
-                CartToCartVm(user.Cart)
-                );
+                mapCart ? CartToCartVm(user.Cart, false) : null // Passa false per evitare ricorsione
+            );
         }
 
         public static ProductVm ProductToProductVm(Product product)
@@ -32,19 +32,20 @@ namespace WebAppApi.Shared
                 product.ProductId,
                 product.ProductName,
                 product.IsDeleted,
-                product.CartProducts.Select(cp => CartProductToCartProductVm(cp)).ToList()
-                );
+                product.CartProducts.Select(cp => CartProductToCartProductVm(cp, false)).ToList() // Evita ricorsione completa
+            );
         }
 
-        public static CartProductVm CartProductToCartProductVm(CartProduct cartProduct)
+        public static CartProductVm CartProductToCartProductVm(CartProduct cartProduct, bool deepMap = true)
         {
             return new CartProductVm(
+                cartProduct.CartProductId,
                 cartProduct.CartId,
                 cartProduct.ProductId,
-                CartToCartVm(cartProduct.Cart),
-                ProductToProductVm(cartProduct.Product),
+                deepMap ? CartToCartVm(cartProduct.Cart) : null, 
+                deepMap ? ProductToProductVm(cartProduct.Product) : null, 
                 cartProduct.Quantity
-                );
+            );
         }
     }
 }

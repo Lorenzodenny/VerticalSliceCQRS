@@ -17,7 +17,7 @@ namespace WebAppApi.Database
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<CartProduct>()
-                .HasKey(cp => new { cp.CartId, cp.ProductId });
+                .HasKey(cp => cp.CartProductId);
 
             modelBuilder.Entity<CartProduct>()
                 .HasOne(cp => cp.Cart)
