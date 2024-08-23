@@ -7,6 +7,10 @@ using System.Reflection;
 using WebAppApi.Database;
 using WebAppApi.Shared;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +30,26 @@ builder.Services.AddSwaggerGen(s =>
     s.SwaggerDoc("v1", new OpenApiInfo { Title = "WebAppApi", Version = "v1" });
 });
 
+// JET Autenticazione
+builder.Services.AddSingleton<JwtOptions>();
+builder.Services.AddScoped<IJwtProvider, JwtProvider>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        };
+    });
+
+
 var assembly = typeof(Program).Assembly;
 builder.Services.AddValidatorsFromAssembly(assembly);
 builder.Services.AddMediatR(config => config.RegisterServicesFromAssembly(assembly));
@@ -44,7 +68,7 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "WebAppApi v1");
     });
 }
-
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
