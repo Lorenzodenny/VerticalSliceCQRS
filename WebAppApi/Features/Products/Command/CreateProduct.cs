@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.Product;
 using WebAppApi.Database;
@@ -78,9 +79,11 @@ namespace WebAppApi.Features.Products.Command
                     return Results.BadRequest(new { Errors = errors });
                 }
             })
+            .RequireAuthorization()
             .WithName("CreateProduct")
             .Produces<ProductVm>(StatusCodes.Status200OK)
-            .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .WithTags("Products");
         }
 
     }

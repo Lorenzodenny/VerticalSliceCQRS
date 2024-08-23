@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.CartProduct;
 using WebAppApi.Database;
@@ -49,6 +50,7 @@ namespace WebAppApi.Features.CartProducts.Command
             }
         }
 
+        // Endpoint
         public static void MapDeleteCartProductEndpoint(IEndpointRouteBuilder app)
         {
             app.MapDelete("/api/cartproducts/{cartProductId:int}",
@@ -70,9 +72,11 @@ namespace WebAppApi.Features.CartProducts.Command
                     return Results.BadRequest(ex.Message);
                 }
             })
+            .RequireAuthorization()
             .WithName("DeleteCartProduct")
             .Produces(StatusCodes.Status204NoContent)
-            .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .WithTags("CartProduct");
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Contracts.User;
@@ -79,10 +80,12 @@ namespace WebAppApi.Features.Users
                     return Results.BadRequest(new { Errors = errors });
                 }
             })
+            .RequireAuthorization()
             .WithName("GetUserById")
             .Produces<UserVm>(StatusCodes.Status200OK)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithTags("Users");
         }
 
     }

@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.User;
 using WebAppApi.Database;
@@ -67,12 +68,13 @@ namespace WebAppApi.Features.Users.Command
         // Endpoint
         public static void MapUpdateUserEndpoint(IEndpointRouteBuilder app)
         {
-            app.MapPut("/api/users",
-            async (UpdateUserCommand command, [FromServices] ISender sender) =>
+            app.MapPut("/api/users/{id:int}",
+            async (int id, UpdateUserCommand command, [FromServices] ISender sender) =>
             {
                 try
                 {
-                    var result = await sender.Send(command);
+                    var updatedCommand = command with { Request = command.Request with { UserId = id } };
+                    var result = await sender.Send(updatedCommand);
                     return Results.Ok(result);
                 }
                 catch (ValidationException ex)
@@ -85,11 +87,14 @@ namespace WebAppApi.Features.Users.Command
                     return Results.NotFound(ex.Message);
                 }
             })
+            .RequireAuthorization()
             .WithName("UpdateUser")
             .Produces<UserVm>(StatusCodes.Status200OK)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithTags("Users");
         }
+
 
     }
 }

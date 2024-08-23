@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.User;
 using WebAppApi.Database;
@@ -76,10 +77,12 @@ namespace WebAppApi.Features.Users.Command
                     return Results.NotFound(ex.Message);
                 }
             })
+            .RequireAuthorization()
             .WithName("DeleteUser")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithTags("Users");
         }
 
     }

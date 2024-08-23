@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Database;
@@ -51,8 +52,10 @@ namespace WebAppApi.Features.Carts.Query
                 var result = await sender.Send(query);
                 return Results.Ok(result);
             })
+            .RequireAuthorization()
             .WithName("GetAllCarts")
-            .Produces<List<CartVm>>(StatusCodes.Status200OK);
+            .Produces<List<CartVm>>(StatusCodes.Status200OK)
+            .WithTags("Carts");
         }
     }
 }

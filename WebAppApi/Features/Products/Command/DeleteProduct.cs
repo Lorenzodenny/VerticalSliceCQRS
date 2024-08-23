@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.Product;
 using WebAppApi.Database;
@@ -84,10 +85,12 @@ namespace WebAppApi.Features.Products.Command
                     return Results.NotFound(ex.Message);
                 }
             })
+            .RequireAuthorization()
             .WithName("DeleteProduct")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithTags("Products");
         }
 
     }

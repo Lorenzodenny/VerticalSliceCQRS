@@ -5,6 +5,7 @@ using WebAppApi.Contracts.Product;
 using WebAppApi.Database;
 using FluentValidation;
 using WebAppApi.ViewModel;
+using Microsoft.AspNetCore.Authorization;
 
 namespace WebAppApi.Features.Products.Query
 {
@@ -40,7 +41,6 @@ namespace WebAppApi.Features.Products.Query
         }
 
         // Endpoint
-        // Endpoint
         public static void MapGetProductByIdEndpoint(IEndpointRouteBuilder app)
         {
             app.MapGet("/api/products/{productId:int}",
@@ -58,10 +58,12 @@ namespace WebAppApi.Features.Products.Query
                     return Results.BadRequest(new { Errors = errors });
                 }
             })
+            .RequireAuthorization()
             .WithName("GetProductById")
             .Produces<ProductVm>(StatusCodes.Status200OK)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithTags("Products");
         }
 
 

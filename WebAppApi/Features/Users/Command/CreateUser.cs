@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.User;
 using WebAppApi.Database;
@@ -81,9 +82,11 @@ namespace WebAppApi.Features.Users.Command
                     return Results.BadRequest(new { Errors = errors });
                 }
             })
+            .RequireAuthorization()
             .WithName("CreateUser")
             .Produces<UserVm>(StatusCodes.Status200OK)
-            .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .WithTags("Users");
         }
 
     }

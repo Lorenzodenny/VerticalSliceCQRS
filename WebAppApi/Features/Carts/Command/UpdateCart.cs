@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.Cart;
 using WebAppApi.Database;
@@ -67,15 +68,16 @@ namespace WebAppApi.Features.Carts.Command
             }
 
         }
-
+        // Endpoint
         public static void MapUpdateCartEndpoint(IEndpointRouteBuilder app)
         {
-            app.MapPut("/api/carts",
-            async (UpdateCartCommand command, [FromServices] ISender sender) =>
+            app.MapPut("/api/carts/{id:int}",
+            async (int id, UpdateCartCommand command, [FromServices] ISender sender) =>
             {
                 try
                 {
-                    var result = await sender.Send(command);
+                    var updatedCommand = command with { Request = command.Request with { CartId = id } };
+                    var result = await sender.Send(updatedCommand);
                     return Results.Ok(result);
                 }
                 catch (ValidationException ex)
@@ -84,9 +86,14 @@ namespace WebAppApi.Features.Carts.Command
                     return Results.BadRequest(new { Errors = errors });
                 }
             })
+            .RequireAuthorization()
             .WithName("UpdateCart")
             .Produces<CartVm>(StatusCodes.Status200OK)
-            .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status404NotFound)
+            .WithTags("Carts");
         }
+
+
     }
 }

@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Database;
@@ -33,6 +34,8 @@ namespace WebAppApi.Features.CartProducts.Query
             }
         }
 
+
+       // Endpoint
         public static void MapGetAllCartProductsEndpoint(IEndpointRouteBuilder app)
         {
             app.MapGet("/api/cartproducts",
@@ -42,8 +45,11 @@ namespace WebAppApi.Features.CartProducts.Query
                 var result = await sender.Send(query);
                 return Results.Ok(result);
             })
+            .RequireAuthorization()
             .WithName("GetAllCartProducts")
-            .Produces<List<CartProductVm>>(StatusCodes.Status200OK);
+            .Produces<List<CartProductVm>>(StatusCodes.Status200OK)
+            .WithTags("CartProduct");
+
         }
     }
 }

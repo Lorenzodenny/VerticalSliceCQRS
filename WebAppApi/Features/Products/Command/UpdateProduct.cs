@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.Product;
 using WebAppApi.Database;
@@ -66,12 +67,13 @@ namespace WebAppApi.Features.Products.Command
         // STEP 4 l'endpoint
         public static void MapUpdateProductEndpoint(IEndpointRouteBuilder app)
         {
-            app.MapPut("/api/products",
-            async (UpdateProductCommand command, [FromServices] ISender sender) =>
+            app.MapPut("/api/products/{id:int}",
+            async (int id, UpdateProductCommand command, [FromServices] ISender sender) =>
             {
                 try
                 {
-                    var result = await sender.Send(command);
+                    var updatedCommand = command with { Request = command.Request with { ProductId = id } };
+                    var result = await sender.Send(updatedCommand);
                     return Results.Ok(result);
                 }
                 catch (ValidationException ex)
@@ -84,11 +86,15 @@ namespace WebAppApi.Features.Products.Command
                     return Results.NotFound(ex.Message);
                 }
             })
+            .RequireAuthorization()
             .WithName("UpdateProduct")
             .Produces<ProductVm>(StatusCodes.Status200OK)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithTags("Products");
         }
+
+
 
     }
 }

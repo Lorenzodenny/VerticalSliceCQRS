@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Contracts.CartProduct;
@@ -54,7 +55,7 @@ namespace WebAppApi.Features.CartProducts.Query
                 return MapIntoVm.CartProductToCartProductVm(cartProduct);
             }
         }
-
+        // Endpoint
         public static void MapGetCartProductByIdEndpoint(IEndpointRouteBuilder app)
         {
             app.MapGet("/api/cartproducts/{cartProductId:int}",
@@ -72,10 +73,12 @@ namespace WebAppApi.Features.CartProducts.Query
                     return Results.BadRequest(new { Errors = errors });
                 }
             })
+            .RequireAuthorization()
             .WithName("GetCartProductById")
             .Produces<CartProductVm>(StatusCodes.Status200OK)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithTags("CartProduct");
         }
     }
 }

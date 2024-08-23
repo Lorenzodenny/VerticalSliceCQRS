@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Database;
@@ -44,8 +45,10 @@ namespace WebAppApi.Features.Products.Query
                 var result = await sender.Send(query);
                 return Results.Ok(result);
             })
+            .RequireAuthorization()
             .WithName("GetAllProducts")
-            .Produces<List<ProductVm>>(StatusCodes.Status200OK);
+            .Produces<List<ProductVm>>(StatusCodes.Status200OK)
+            .WithTags("Products");
         }
 
     }

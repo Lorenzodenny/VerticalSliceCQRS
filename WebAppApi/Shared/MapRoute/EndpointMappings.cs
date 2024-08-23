@@ -7,6 +7,9 @@ using WebAppApi.Features.Carts.Command;
 using WebAppApi.Features.Carts.Query;
 using WebAppApi.Features.CartProducts.Command;
 using WebAppApi.Features.CartProducts.Query;
+using WebAppApi.Identity;
+using Microsoft.AspNetCore.Identity;
+using WebAppApi.Identity.EndPointsIdentity;
 // using WebAppApi.Features.CartProducts.Query;
 
 public static class EndpointMappings
@@ -47,12 +50,22 @@ public static class EndpointMappings
         GetAllCartProducts.MapGetAllCartProductsEndpoint(app); 
     }
 
+    public static void MapIdentityEndpoints(this WebApplication app)
+    {
+        Identity.MapRegisterEndpoint(app);
+        Identity.MapLoginEndpoint(app);
+        Identity.MapUpdateUserEndpoint(app);
+        Identity.MapDeleteUserEndpoint(app);
+    }
+
+
+
     public static void MapEndpoints(this WebApplication app)
     {
         app.MapUserEndpoints();
         app.MapProductEndpoints();
         app.MapCartEndpoints();
         app.MapCartProductEndpoints();
+        app.MapIdentityEndpoints();
     }
-
 }

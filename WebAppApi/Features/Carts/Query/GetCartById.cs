@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.Cart;
 using WebAppApi.Database;
@@ -32,6 +33,7 @@ namespace WebAppApi.Features.Carts.Query
             }
         }
 
+        // ENdpoint
         public static void MapGetCartByIdEndpoint(IEndpointRouteBuilder app)
         {
             app.MapGet("/api/carts/{cartId:int}",
@@ -49,10 +51,12 @@ namespace WebAppApi.Features.Carts.Query
                     return Results.BadRequest(new { Errors = errors });
                 }
             })
+            .RequireAuthorization()
             .WithName("GetCartById")
             .Produces<CartVm>(StatusCodes.Status200OK)
             .ProducesValidationProblem(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .WithTags("Carts");
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Contracts.CartProduct;
@@ -76,6 +77,7 @@ namespace WebAppApi.Features.CartProducts.Command
 
         }
 
+        // ENDpoint
         public static void MapCreateCartProductEndpoint(IEndpointRouteBuilder app)
         {
             app.MapPost("/api/cartproducts",
@@ -92,9 +94,11 @@ namespace WebAppApi.Features.CartProducts.Command
                     return Results.BadRequest(new { Errors = errors });
                 }
             })
+            .RequireAuthorization()
             .WithName("CreateCartProduct")
             .Produces<CartProductVm>(StatusCodes.Status200OK)
-            .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .WithTags("CartProduct");
         }
     }
 }
