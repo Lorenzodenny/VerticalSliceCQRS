@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.ViewModel;
 
 namespace WebAppApi.Features.Products.Query
@@ -15,25 +16,33 @@ namespace WebAppApi.Features.Products.Query
         // Creo l'handler
         public class Handler : IRequestHandler<GetAllProductsQuery, List<ProductVm>>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
 
-            public Handler(eCommerceDbContext context)
+            public Handler(IUnitOfWork unitOfWork)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             }
 
             public async Task<List<ProductVm>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
             {
-                return await _context.Products
-                    .Where(p => !p.IsDeleted)
-                    .Select(p => new ProductVm(
-                        p.ProductId,
-                        p.ProductName,
-                        p.IsDeleted,
-                        null)) // CartProducts è null in questo caso
-                    .ToListAsync(cancellationToken);
+                try
+                {
+                    return await _unitOfWork.Context.Products
+                        .Where(p => !p.IsDeleted)
+                        .Select(p => new ProductVm(
+                            p.ProductId,
+                            p.ProductName,
+                            p.IsDeleted,
+                            null)) // CartProducts è null in questo caso
+                        .ToListAsync(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    throw new ApplicationException($"Errore durante il recupero dei prodotti: {ex.Message}", ex);
+                }
             }
         }
+
 
         // Endpoint
         public static void MapGetAllProductsEndpoint(IEndpointRouteBuilder app)

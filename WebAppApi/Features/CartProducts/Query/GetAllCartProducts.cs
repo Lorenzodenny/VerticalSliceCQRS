@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.Shared;
 using WebAppApi.ViewModel;
 
@@ -15,27 +16,34 @@ namespace WebAppApi.Features.CartProducts.Query
 
         public class Handler : IRequestHandler<GetAllCartProductsQuery, List<CartProductVm>>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
 
-            public Handler(eCommerceDbContext context)
+            public Handler(IUnitOfWork unitOfWork)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             }
 
             public async Task<List<CartProductVm>> Handle(GetAllCartProductsQuery request, CancellationToken cancellationToken)
             {
-                var cartProducts = await _context.CartProducts
-                    .Include(cp => cp.Cart)
-                    .ThenInclude(c => c.User)
-                    .Include(cp => cp.Product)
-                    .ToListAsync(cancellationToken);
+                try
+                {
+                    var cartProducts = await _unitOfWork.Context.CartProducts
+                        .Include(cp => cp.Cart)
+                        .ThenInclude(c => c.User)
+                        .Include(cp => cp.Product)
+                        .ToListAsync(cancellationToken);
 
-                return cartProducts.Select(cp => MapIntoVm.CartProductToCartProductVm(cp)).ToList();
+                    return cartProducts.Select(cp => MapIntoVm.CartProductToCartProductVm(cp)).ToList();
+                }
+                catch (Exception ex)
+                {
+                    throw new ApplicationException($"Errore durante il recupero dei prodotti del carrello: {ex.Message}", ex);
+                }
             }
         }
 
 
-       // Endpoint
+        // Endpoint
         public static void MapGetAllCartProductsEndpoint(IEndpointRouteBuilder app)
         {
             app.MapGet("/api/cartproducts",

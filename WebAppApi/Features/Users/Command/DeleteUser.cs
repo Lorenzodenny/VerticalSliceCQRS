@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.User;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 
 namespace WebAppApi.Features.Users.Command
 {
@@ -24,36 +25,45 @@ namespace WebAppApi.Features.Users.Command
         // Handler
         public class Handler : IRequestHandler<DeleteUserCommand, Unit>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
             private readonly IValidator<DeleteUserCommand> _validator;
 
-            public Handler(eCommerceDbContext context, IValidator<DeleteUserCommand> validator)
+            public Handler(IUnitOfWork unitOfWork, IValidator<DeleteUserCommand> validator)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
                 _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             }
 
             public async Task<Unit> Handle(DeleteUserCommand request, CancellationToken cancellationToken)
             {
-                // Esegui la validazione
-                var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-                if (!validationResult.IsValid)
+                try
                 {
-                    throw new ValidationException(validationResult.Errors);
-                }
+                    var validationResult = await _validator.ValidateAsync(request, cancellationToken);
+                    if (!validationResult.IsValid)
+                    {
+                        throw new ValidationException(validationResult.Errors);
+                    }
 
-                var existingUser = await _context.Users.FindAsync(request.Request.UserId);
-                if (existingUser == null)
+                    var existingUser = await _unitOfWork.Context.Users.FindAsync(new object[] { request.Request.UserId }, cancellationToken);
+                    if (existingUser == null)
+                    {
+                        throw new KeyNotFoundException("Utente non trovato");
+                    }
+
+                    existingUser.IsDeleted = true;
+                    _unitOfWork.Context.Users.Update(existingUser);
+                    await _unitOfWork.CompleteAsync(cancellationToken);
+
+                    return Unit.Value;
+                }
+                catch (Exception ex)
                 {
-                    throw new KeyNotFoundException("Utente non trovato");
+                    throw new ApplicationException($"Errore durante la cancellazione dell'utente: {ex.Message}", ex);
                 }
-
-                existingUser.IsDeleted = true;
-                await _context.SaveChangesAsync(cancellationToken);
-
-                return Unit.Value;
             }
         }
+
+
 
         // Endpoint
         public static void MapDeleteUserEndpoint(IEndpointRouteBuilder app)

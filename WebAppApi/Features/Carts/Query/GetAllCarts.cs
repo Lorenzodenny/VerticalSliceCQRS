@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.ViewModel;
 
 namespace WebAppApi.Features.Carts.Query
@@ -15,32 +16,40 @@ namespace WebAppApi.Features.Carts.Query
         // Creo l'handler
         public class Handler : IRequestHandler<GetAllCartsQuery, List<CartVm>>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
 
-            public Handler(eCommerceDbContext context)
+            public Handler(IUnitOfWork unitOfWork)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             }
 
             public async Task<List<CartVm>> Handle(GetAllCartsQuery request, CancellationToken cancellationToken)
             {
-                return await _context.Carts
-                    .Where(c => !c.IsDeleted)
-                    .Select(c => new CartVm(
-                        c.CartId,
-                        new UserVm(
-                            c.User.UserId,
-                            c.User.UserName,
-                            c.User.Email,
-                            c.User.IsDeleted,
-                            null // Puoi lasciare il cart null
-                        ),
-                        c.IsDeleted,
-                        new List<CartProductVm>() // Passa una lista vuota se non ci sono prodotti nel carrello
-                    ))
-                    .ToListAsync(cancellationToken);
+                try
+                {
+                    return await _unitOfWork.Context.Carts
+                        .Where(c => !c.IsDeleted)
+                        .Select(c => new CartVm(
+                            c.CartId,
+                            new UserVm(
+                                c.User.UserId,
+                                c.User.UserName,
+                                c.User.Email,
+                                c.User.IsDeleted,
+                                null // Puoi lasciare il cart null
+                            ),
+                            c.IsDeleted,
+                            new List<CartProductVm>() // Passa una lista vuota se non ci sono prodotti nel carrello
+                        ))
+                        .ToListAsync(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    throw new ApplicationException($"Errore durante il recupero dei carrelli: {ex.Message}", ex);
+                }
             }
         }
+
 
         // L'endpoint
         public static void MapGetAllCartsEndpoint(IEndpointRouteBuilder app)

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Contracts.CartProduct;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.Shared;
 using WebAppApi.ViewModel;
 
@@ -24,37 +25,45 @@ namespace WebAppApi.Features.CartProducts.Query
 
         public class Handler : IRequestHandler<GetCartProductByIdQuery, CartProductVm>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
             private readonly IValidator<GetCartProductByIdQuery> _validator;
 
-            public Handler(eCommerceDbContext context, IValidator<GetCartProductByIdQuery> validator)
+            public Handler(IUnitOfWork unitOfWork, IValidator<GetCartProductByIdQuery> validator)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
                 _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             }
 
             public async Task<CartProductVm> Handle(GetCartProductByIdQuery request, CancellationToken cancellationToken)
             {
-                var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-                if (!validationResult.IsValid)
+                try
                 {
-                    throw new ValidationException(validationResult.Errors);
+                    var validationResult = await _validator.ValidateAsync(request, cancellationToken);
+                    if (!validationResult.IsValid)
+                    {
+                        throw new ValidationException(validationResult.Errors);
+                    }
+
+                    var cartProduct = await _unitOfWork.Context.CartProducts
+                        .Include(cp => cp.Cart)
+                        .ThenInclude(c => c.User)
+                        .Include(cp => cp.Product)
+                        .FirstOrDefaultAsync(cp => cp.CartProductId == request.Request.CartProductId, cancellationToken);
+
+                    if (cartProduct == null)
+                    {
+                        throw new Exception("CartProduct not found.");
+                    }
+
+                    return MapIntoVm.CartProductToCartProductVm(cartProduct);
                 }
-
-                var cartProduct = await _context.CartProducts
-                    .Include(cp => cp.Cart)
-                    .ThenInclude(c => c.User)
-                    .Include(cp => cp.Product)
-                    .FirstOrDefaultAsync(cp => cp.CartProductId == request.Request.CartProductId, cancellationToken);
-
-                if (cartProduct == null)
+                catch (Exception ex)
                 {
-                    throw new Exception("CartProduct not found.");
+                    throw new ApplicationException($"Errore durante il recupero del prodotto del carrello: {ex.Message}", ex);
                 }
-
-                return MapIntoVm.CartProductToCartProductVm(cartProduct);
             }
         }
+
         // Endpoint
         public static void MapGetCartProductByIdEndpoint(IEndpointRouteBuilder app)
         {

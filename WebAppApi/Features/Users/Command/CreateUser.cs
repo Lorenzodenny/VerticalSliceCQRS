@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.User;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.Entities;
 using WebAppApi.ViewModel;
 
@@ -27,12 +28,12 @@ namespace WebAppApi.Features.Users.Command
         // Creo l'handler
         public class Handler : IRequestHandler<CreateUserCommand, UserVm>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
             private readonly IValidator<CreateUserCommand> _validator;
 
-            public Handler(eCommerceDbContext context, IValidator<CreateUserCommand> validator)
+            public Handler(IUnitOfWork unitOfWork, IValidator<CreateUserCommand> validator)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
                 _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             }
 
@@ -53,17 +54,34 @@ namespace WebAppApi.Features.Users.Command
                     IsDeleted = false
                 };
 
-                _context.Users.Add(newUser);
-                await _context.SaveChangesAsync(cancellationToken);
+                // Inizia una transazione
+                await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
-                return new UserVm(
-                    newUser.UserId,
-                    newUser.UserName,
-                    newUser.Email,
-                    newUser.IsDeleted,
-                    null); // Cart è null quando l'utente viene creato
+                try
+                {
+                    // Aggiunge il nuovo utente al contesto
+                    await _unitOfWork.Context.Users.AddAsync(newUser, cancellationToken);
+
+                    // Salva i cambiamenti e completa la transazione
+                    await _unitOfWork.CompleteAsync(cancellationToken);
+                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                    return new UserVm(
+                        newUser.UserId,
+                        newUser.UserName,
+                        newUser.Email,
+                        newUser.IsDeleted,
+                        null);
+                }
+                catch
+                {
+                    // In caso di errore, esegue il rollback della transazione
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    throw;
+                }
             }
         }
+
 
         // Endpoint
         public static void MapCreateUserEndpoint(IEndpointRouteBuilder app)

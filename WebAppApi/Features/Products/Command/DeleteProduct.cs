@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.Product;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.Entities;
 using WebAppApi.ViewModel;
 
@@ -26,42 +27,52 @@ namespace WebAppApi.Features.Products.Command
         // STEP 3) creo l'handler
         public class Handler : IRequestHandler<DeleteProductCommand, ProductVm>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
             private readonly IValidator<DeleteProductCommand> _validator;
 
-            public Handler(eCommerceDbContext context, IValidator<DeleteProductCommand> validator)
+            public Handler(IUnitOfWork unitOfWork, IValidator<DeleteProductCommand> validator)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
                 _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             }
 
             public async Task<ProductVm> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
             {
-                // Esegui la validazione
-                var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-                if (!validationResult.IsValid)
+                await _unitOfWork.BeginTransactionAsync(cancellationToken);
+                try
                 {
-                    throw new ValidationException(validationResult.Errors);
-                }
+                    var validationResult = await _validator.ValidateAsync(request, cancellationToken);
+                    if (!validationResult.IsValid)
+                    {
+                        throw new ValidationException(validationResult.Errors);
+                    }
 
-                var existingProduct = await _context.Products.FindAsync(request.Request.ProductId);
-                if (existingProduct is null || existingProduct.IsDeleted)
+                    var existingProduct = await _unitOfWork.Context.Products.FindAsync(new object[] { request.Request.ProductId }, cancellationToken);
+                    if (existingProduct is null || existingProduct.IsDeleted)
+                    {
+                        throw new Exception("Prodotto non trovato o è stato cancellato.");
+                    }
+
+                    existingProduct.IsDeleted = true;
+                    _unitOfWork.Context.Products.Update(existingProduct);
+                    await _unitOfWork.CompleteAsync(cancellationToken);
+                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                    return new ProductVm(
+                        existingProduct.ProductId,
+                        existingProduct.ProductName,
+                        existingProduct.IsDeleted,
+                        null);
+                }
+                catch
                 {
-                    throw new Exception("Product not found or has been deleted.");
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    throw;
                 }
-
-                existingProduct.IsDeleted = true;
-
-                _context.Products.Update(existingProduct);
-                await _context.SaveChangesAsync(cancellationToken);
-
-                return new ProductVm(
-                    existingProduct.ProductId,
-                    existingProduct.ProductName,
-                    existingProduct.IsDeleted,
-                    null);
             }
         }
+
+
 
         // STEP 4 l'endpoint
         public static void MapDeleteProductEndpoint(IEndpointRouteBuilder app)

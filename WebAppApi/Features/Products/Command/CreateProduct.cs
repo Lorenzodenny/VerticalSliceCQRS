@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.Product;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.Entities;
 using WebAppApi.ViewModel;
 
@@ -26,12 +27,12 @@ namespace WebAppApi.Features.Products.Command
         // STEP 3) creo l'handler
         public class Handler : IRequestHandler<CreateProductCommand, ProductVm>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
             private readonly IValidator<CreateProductCommand> _validator;
 
-            public Handler(eCommerceDbContext context, IValidator<CreateProductCommand> validator)
+            public Handler(IUnitOfWork unitOfWork, IValidator<CreateProductCommand> validator)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
                 _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             }
 
@@ -41,7 +42,6 @@ namespace WebAppApi.Features.Products.Command
                 var validationResult = await _validator.ValidateAsync(request, cancellationToken);
                 if (!validationResult.IsValid)
                 {
-                    // Gestisci il caso di fallimento della validazione
                     throw new ValidationException(validationResult.Errors);
                 }
 
@@ -51,16 +51,32 @@ namespace WebAppApi.Features.Products.Command
                     IsDeleted = false
                 };
 
-                _context.Products.Add(newProduct);
-                await _context.SaveChangesAsync(cancellationToken);
+                // Inizia la transazione
+                await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
-                return new ProductVm(
-                    newProduct.ProductId,
-                    newProduct.ProductName,
-                    newProduct.IsDeleted,
-                    null); // CartProducts è null quando il prodotto viene creato
+                try
+                {
+                    // Aggiungi il nuovo prodotto usando il DbSet del contesto
+                    await _unitOfWork.Context.Products.AddAsync(newProduct, cancellationToken);
+
+                    // Salva i cambiamenti e completa la transazione
+                    await _unitOfWork.CompleteAsync(cancellationToken);
+                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                    return new ProductVm(
+                        newProduct.ProductId,
+                        newProduct.ProductName,
+                        newProduct.IsDeleted,
+                        null); // CartProducts è null quando il prodotto viene creato
+                }
+                catch
+                {
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    throw;
+                }
             }
         }
+
 
         // STEP 4 l'endpoint
         public static void MapCreateProductEndpoint(IEndpointRouteBuilder app)

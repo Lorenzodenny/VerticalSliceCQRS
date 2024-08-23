@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Contracts.User;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.ViewModel;
 
 namespace WebAppApi.Features.Users
@@ -26,41 +27,49 @@ namespace WebAppApi.Features.Users
         // Handler
         public class Handler : IRequestHandler<GetUserByIdQuery, UserVm>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
             private readonly IValidator<GetUserByIdQuery> _validator;
 
-            public Handler(eCommerceDbContext context, IValidator<GetUserByIdQuery> validator)
+            public Handler(IUnitOfWork unitOfWork, IValidator<GetUserByIdQuery> validator)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
                 _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             }
 
             public async Task<UserVm> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
             {
-                // Esegui la validazione
-                var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-                if (!validationResult.IsValid)
+                try
                 {
-                    throw new ValidationException(validationResult.Errors);
+                    var validationResult = await _validator.ValidateAsync(request, cancellationToken);
+                    if (!validationResult.IsValid)
+                    {
+                        throw new ValidationException(validationResult.Errors);
+                    }
+
+                    var user = await _unitOfWork.Context.Users
+                        .Include(u => u.Cart)
+                        .FirstOrDefaultAsync(u => u.UserId == request.Request.UserId && !u.IsDeleted, cancellationToken);
+
+                    if (user == null)
+                    {
+                        throw new KeyNotFoundException("Utente non trovato");
+                    }
+
+                    return new UserVm(
+                        user.UserId,
+                        user.UserName,
+                        user.Email,
+                        user.IsDeleted,
+                        null); // Cart rimane null
                 }
-
-                var user = await _context.Users
-                    .Include(u => u.Cart)
-                    .FirstOrDefaultAsync(u => u.UserId == request.Request.UserId && !u.IsDeleted, cancellationToken);
-
-                if (user == null)
+                catch (Exception ex)
                 {
-                    throw new KeyNotFoundException("Utente non trovato");
+                    throw new ApplicationException($"Errore durante il recupero dell'utente: {ex.Message}", ex);
                 }
-
-                return new UserVm(
-                    user.UserId,
-                    user.UserName,
-                    user.Email,
-                    user.IsDeleted,
-                    null); // Cart rimane null
             }
         }
+
+
 
         // Endpoint
         public static void MapGetUserByIdEndpoint(IEndpointRouteBuilder app)

@@ -6,6 +6,7 @@ using WebAppApi.Database;
 using FluentValidation;
 using WebAppApi.ViewModel;
 using Microsoft.AspNetCore.Authorization;
+using WebAppApi.Database.Interface;
 
 namespace WebAppApi.Features.Products.Query
 {
@@ -17,28 +18,36 @@ namespace WebAppApi.Features.Products.Query
         // Creo l'handler
         public class Handler : IRequestHandler<GetProductByIdQuery, ProductVm>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
 
-            public Handler(eCommerceDbContext context)
+            public Handler(IUnitOfWork unitOfWork)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             }
 
             public async Task<ProductVm> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
             {
-                var product = await _context.Products.FindAsync(request.Request.ProductId);
-                if (product is null || product.IsDeleted)
+                try
                 {
-                    throw new Exception("Product not found or has been deleted.");
-                }
+                    var product = await _unitOfWork.Context.Products.FindAsync(new object[] { request.Request.ProductId }, cancellationToken);
+                    if (product is null || product.IsDeleted)
+                    {
+                        throw new Exception("Prodotto non trovato o cancellato.");
+                    }
 
-                return new ProductVm(
-                    product.ProductId,
-                    product.ProductName,
-                    product.IsDeleted,
-                    null); // CartProducts è null in questo caso
+                    return new ProductVm(
+                        product.ProductId,
+                        product.ProductName,
+                        product.IsDeleted,
+                        null); // CartProducts è null in questo caso
+                }
+                catch (Exception ex)
+                {
+                    throw new ApplicationException($"Errore durante il recupero del prodotto: {ex.Message}", ex);
+                }
             }
         }
+
 
         // Endpoint
         public static void MapGetProductByIdEndpoint(IEndpointRouteBuilder app)

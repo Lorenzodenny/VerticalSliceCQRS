@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
+using WebAppApi.Database.Interface;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +25,11 @@ builder.Logging.SetMinimumLevel(LogLevel.Debug);
 // Configura DbContext per Identity e per le altre entità
 builder.Services.AddDbContext<eCommerceDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+// UnitOfWork
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
 
 // Configura Identity
 builder.Services.AddDefaultIdentity<IdentityUser>()

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.CartProduct;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 
 namespace WebAppApi.Features.CartProducts.Command
 {
@@ -21,34 +22,44 @@ namespace WebAppApi.Features.CartProducts.Command
 
         public class Handler : IRequestHandler<DeleteCartProductCommand>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
             private readonly IValidator<DeleteCartProductCommand> _validator;
 
-            public Handler(eCommerceDbContext context, IValidator<DeleteCartProductCommand> validator)
+            public Handler(IUnitOfWork unitOfWork, IValidator<DeleteCartProductCommand> validator)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
                 _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             }
 
             public async Task Handle(DeleteCartProductCommand request, CancellationToken cancellationToken)
             {
-                var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-                if (!validationResult.IsValid)
+                await _unitOfWork.BeginTransactionAsync(cancellationToken);
+                try
                 {
-                    throw new ValidationException(validationResult.Errors);
-                }
+                    var validationResult = await _validator.ValidateAsync(request, cancellationToken);
+                    if (!validationResult.IsValid)
+                    {
+                        throw new ValidationException(validationResult.Errors);
+                    }
 
-                var existingCartProduct = await _context.CartProducts.FindAsync(request.Request.CartProductId);
-                if (existingCartProduct is null)
+                    var existingCartProduct = await _unitOfWork.Context.CartProducts.FindAsync(new object[] { request.Request.CartProductId }, cancellationToken);
+                    if (existingCartProduct is null)
+                    {
+                        throw new Exception("CartProduct not found.");
+                    }
+
+                    _unitOfWork.Context.CartProducts.Remove(existingCartProduct);
+                    await _unitOfWork.CompleteAsync(cancellationToken);
+                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                }
+                catch
                 {
-                    throw new Exception("CartProduct not found.");
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    throw;
                 }
-
-                _context.CartProducts.Remove(existingCartProduct);
-                await _context.SaveChangesAsync(cancellationToken);
-
             }
         }
+
 
         // Endpoint
         public static void MapDeleteCartProductEndpoint(IEndpointRouteBuilder app)

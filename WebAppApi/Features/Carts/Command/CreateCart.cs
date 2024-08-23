@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Contracts.Cart;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.Entities;
 using WebAppApi.ViewModel;
 
@@ -24,12 +25,12 @@ namespace WebAppApi.Features.Carts.Command
 
         public class Handler : IRequestHandler<CreateCartCommand, CartVm>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
             private readonly IValidator<CreateCartCommand> _validator;
 
-            public Handler(eCommerceDbContext context, IValidator<CreateCartCommand> validator)
+            public Handler(IUnitOfWork unitOfWork, IValidator<CreateCartCommand> validator)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
                 _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             }
 
@@ -41,39 +42,52 @@ namespace WebAppApi.Features.Carts.Command
                     throw new ValidationException(validationResult.Errors);
                 }
 
-                // Controlla se esiste già un carrello per questo utente
-                var existingCart = await _context.Carts
-                    .FirstOrDefaultAsync(c => c.UserId == request.Request.UserId && !c.IsDeleted, cancellationToken);
+                await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
-                if (existingCart != null)
+                try
                 {
-                    throw new Exception("L'utente ha già un carrello attivo.");
+                    // Controlla se esiste già un carrello per questo utente
+                    var existingCart = await _unitOfWork.Context.Carts
+                        .FirstOrDefaultAsync(c => c.UserId == request.Request.UserId && !c.IsDeleted, cancellationToken);
+
+                    if (existingCart != null)
+                    {
+                        throw new Exception("L'utente ha già un carrello attivo.");
+                    }
+
+                    var newCart = new Cart
+                    {
+                        UserId = request.Request.UserId,
+                        IsDeleted = false
+                    };
+
+                    _unitOfWork.Context.Carts.Add(newCart);
+                    await _unitOfWork.CompleteAsync(cancellationToken);
+                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                    // Carica esplicitamente l'utente associato
+                    var user = await _unitOfWork.Context.Users.FindAsync(new object[] { newCart.UserId }, cancellationToken);
+                    if (user == null)
+                    {
+                        throw new Exception("Utente non trovato.");
+                    }
+
+                    return new CartVm(
+                        newCart.CartId,
+                        new UserVm(user.UserId, user.UserName, user.Email, user.IsDeleted, null),
+                        newCart.IsDeleted,
+                        null
+                    );
                 }
-
-                var newCart = new Cart
+                catch
                 {
-                    UserId = request.Request.UserId,
-                    IsDeleted = false
-                };
-
-                _context.Carts.Add(newCart);
-                await _context.SaveChangesAsync(cancellationToken);
-
-                // Carica esplicitamente l'utente associato
-                var user = await _context.Users.FindAsync(newCart.UserId);
-                if (user == null)
-                {
-                    throw new Exception("User not found.");
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    throw;
                 }
-
-                return new CartVm(
-                    newCart.CartId,
-                    new UserVm(user.UserId, user.UserName, user.Email, user.IsDeleted, null),
-                    newCart.IsDeleted, null
-                );
             }
-
         }
+
+
         public static void MapCreateCartEndpoint(IEndpointRouteBuilder app)
         {
             app.MapPost("/api/carts",

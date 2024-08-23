@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.User;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.ViewModel;
 
 namespace WebAppApi.Features.Users.Command
@@ -27,41 +28,48 @@ namespace WebAppApi.Features.Users.Command
         // Handler
         public class Handler : IRequestHandler<UpdateUserCommand, UserVm>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
             private readonly IValidator<UpdateUserCommand> _validator;
 
-            public Handler(eCommerceDbContext context, IValidator<UpdateUserCommand> validator)
+            public Handler(IUnitOfWork unitOfWork, IValidator<UpdateUserCommand> validator)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
                 _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             }
 
             public async Task<UserVm> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
             {
-                // Esegui la validazione
-                var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-                if (!validationResult.IsValid)
+                try
                 {
-                    throw new ValidationException(validationResult.Errors);
-                }
+                    var validationResult = await _validator.ValidateAsync(request, cancellationToken);
+                    if (!validationResult.IsValid)
+                    {
+                        throw new ValidationException(validationResult.Errors);
+                    }
 
-                var existingUser = await _context.Users.FindAsync(request.Request.UserId);
-                if (existingUser == null)
+                    var existingUser = await _unitOfWork.Context.Users.FindAsync(new object[] { request.Request.UserId }, cancellationToken);
+                    if (existingUser == null)
+                    {
+                        throw new KeyNotFoundException("Utente non trovato");
+                    }
+
+                    existingUser.UserName = request.Request.UserName;
+                    existingUser.Email = request.Request.Email;
+
+                    _unitOfWork.Context.Users.Update(existingUser);
+                    await _unitOfWork.CompleteAsync(cancellationToken);
+
+                    return new UserVm(
+                        existingUser.UserId,
+                        existingUser.UserName,
+                        existingUser.Email,
+                        existingUser.IsDeleted,
+                        null); // Cart rimane null
+                }
+                catch (Exception ex)
                 {
-                    throw new KeyNotFoundException("Utente non trovato");
+                    throw new ApplicationException($"Errore durante l'aggiornamento dell'utente: {ex.Message}", ex);
                 }
-
-                existingUser.UserName = request.Request.UserName;
-                existingUser.Email = request.Request.Email;
-
-                await _context.SaveChangesAsync(cancellationToken);
-
-                return new UserVm(
-                    existingUser.UserId,
-                    existingUser.UserName,
-                    existingUser.Email,
-                    existingUser.IsDeleted,
-                    null); // Cart rimane null
             }
         }
 

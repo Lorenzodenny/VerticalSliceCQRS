@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.ViewModel;
 
 namespace WebAppApi.Features.Users
@@ -15,29 +16,38 @@ namespace WebAppApi.Features.Users
         // Handler
         public class Handler : IRequestHandler<GetAllUsersQuery, List<UserVm>>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
 
-            public Handler(eCommerceDbContext context)
+            public Handler(IUnitOfWork unitOfWork)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             }
 
             public async Task<List<UserVm>> Handle(GetAllUsersQuery request, CancellationToken cancellationToken)
             {
-                var users = await _context.Users
-                    .Where(u => !u.IsDeleted)
-                    .Include(u => u.Cart)
-                    .ToListAsync(cancellationToken);
+                try
+                {
+                    var users = await _unitOfWork.Context.Users
+                        .Where(u => !u.IsDeleted)
+                        .Include(u => u.Cart)
+                        .ToListAsync(cancellationToken);
 
-                return users.Select(user => new UserVm(
-                    user.UserId,
-                    user.UserName,
-                    user.Email,
-                    user.IsDeleted,
-                    null // Cart rimane null
-                )).ToList();
+                    return users.Select(user => new UserVm(
+                        user.UserId,
+                        user.UserName,
+                        user.Email,
+                        user.IsDeleted,
+                        null // Cart rimane null
+                    )).ToList();
+                }
+                catch (Exception ex)
+                {
+                    throw new ApplicationException($"Errore durante il recupero degli utenti: {ex.Message}", ex);
+                }
             }
         }
+
+
 
         // Endpoint
         public static void MapGetAllUsersEndpoint(IEndpointRouteBuilder app)

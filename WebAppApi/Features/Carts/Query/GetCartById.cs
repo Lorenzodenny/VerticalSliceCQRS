@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebAppApi.Contracts.Cart;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.ViewModel;
 
 namespace WebAppApi.Features.Carts.Query
@@ -14,24 +15,37 @@ namespace WebAppApi.Features.Carts.Query
 
         public class Handler : IRequestHandler<GetCartByIdQuery, CartVm>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
 
-            public Handler(eCommerceDbContext context)
+            public Handler(IUnitOfWork unitOfWork)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             }
 
             public async Task<CartVm> Handle(GetCartByIdQuery request, CancellationToken cancellationToken)
             {
-                var cart = await _context.Carts.FindAsync(request.Request.CartId);
-                if (cart is null || cart.IsDeleted)
+                try
                 {
-                    throw new Exception("Cart not found or has been deleted.");
-                }
+                    var cart = await _unitOfWork.Context.Carts.FindAsync(new object[] { request.Request.CartId }, cancellationToken);
+                    if (cart is null || cart.IsDeleted)
+                    {
+                        throw new Exception("Carrello non trovato o cancellato.");
+                    }
 
-                return new CartVm(cart.CartId, new UserVm(cart.User.UserId, cart.User.UserName, cart.User.Email, cart.User.IsDeleted, null), cart.IsDeleted, null);
+                    return new CartVm(
+                        cart.CartId,
+                        new UserVm(cart.User.UserId, cart.User.UserName, cart.User.Email, cart.User.IsDeleted, null),
+                        cart.IsDeleted,
+                        null
+                    );
+                }
+                catch (Exception ex)
+                {
+                    throw new ApplicationException($"Errore durante il recupero del carrello: {ex.Message}", ex);
+                }
             }
         }
+
 
         // ENdpoint
         public static void MapGetCartByIdEndpoint(IEndpointRouteBuilder app)

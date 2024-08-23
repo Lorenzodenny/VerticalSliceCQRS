@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Contracts.CartProduct;
 using WebAppApi.Database;
+using WebAppApi.Database.Interface;
 using WebAppApi.Entities;
 using WebAppApi.Shared;
 using WebAppApi.ViewModel;
@@ -28,45 +29,56 @@ namespace WebAppApi.Features.CartProducts.Command
 
         public class Handler : IRequestHandler<UpdateCartProductCommand, CartProductVm>
         {
-            private readonly eCommerceDbContext _context;
+            private readonly IUnitOfWork _unitOfWork;
             private readonly IValidator<UpdateCartProductCommand> _validator;
 
-            public Handler(eCommerceDbContext context, IValidator<UpdateCartProductCommand> validator)
+            public Handler(IUnitOfWork unitOfWork, IValidator<UpdateCartProductCommand> validator)
             {
-                _context = context ?? throw new ArgumentNullException(nameof(context));
+                _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
                 _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             }
 
             public async Task<CartProductVm> Handle(UpdateCartProductCommand request, CancellationToken cancellationToken)
             {
-                var validationResult = await _validator.ValidateAsync(request, cancellationToken);
-                if (!validationResult.IsValid)
+                await _unitOfWork.BeginTransactionAsync(cancellationToken);
+                try
                 {
-                    throw new ValidationException(validationResult.Errors);
+                    var validationResult = await _validator.ValidateAsync(request, cancellationToken);
+                    if (!validationResult.IsValid)
+                    {
+                        throw new ValidationException(validationResult.Errors);
+                    }
+
+                    var existingCartProduct = await _unitOfWork.Context.CartProducts
+                        .Include(cp => cp.Cart)
+                        .ThenInclude(c => c.User)
+                        .Include(cp => cp.Product)
+                        .FirstOrDefaultAsync(cp => cp.CartProductId == request.Request.CartProductId, cancellationToken);
+
+                    if (existingCartProduct == null)
+                    {
+                        throw new Exception("CartProduct not found.");
+                    }
+
+                    // Aggiorna i campi con i nuovi valori
+                    existingCartProduct.CartId = request.Request.NewCartId;
+                    existingCartProduct.ProductId = request.Request.NewProductId;
+                    existingCartProduct.Quantity = request.Request.Quantity;
+
+                    _unitOfWork.Context.CartProducts.Update(existingCartProduct);
+                    await _unitOfWork.CompleteAsync(cancellationToken);
+                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                    return MapIntoVm.CartProductToCartProductVm(existingCartProduct);
                 }
-
-                var existingCartProduct = await _context.CartProducts
-                    .Include(cp => cp.Cart)
-                    .ThenInclude(c => c.User)
-                    .Include(cp => cp.Product)
-                    .FirstOrDefaultAsync(cp => cp.CartProductId == request.Request.CartProductId);
-
-                if (existingCartProduct == null)
+                catch
                 {
-                    throw new Exception("CartProduct not found.");
+                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+                    throw;
                 }
-
-                // Aggiorna i campi con i nuovi valori
-                existingCartProduct.CartId = request.Request.NewCartId;
-                existingCartProduct.ProductId = request.Request.NewProductId;
-                existingCartProduct.Quantity = request.Request.Quantity;
-
-                _context.CartProducts.Update(existingCartProduct);
-                await _context.SaveChangesAsync(cancellationToken);
-
-                return MapIntoVm.CartProductToCartProductVm(existingCartProduct);
             }
         }
+
 
 
         // Endpoint
