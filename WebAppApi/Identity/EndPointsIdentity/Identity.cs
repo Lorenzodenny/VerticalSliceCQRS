@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using FluentValidation;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -11,8 +12,21 @@ namespace WebAppApi.Identity.EndPointsIdentity
     {
         public static void MapRegisterEndpoint(IEndpointRouteBuilder app)
         {
-            app.MapPost("/api/users/register", async (RegisterModel model, UserManager<IdentityUser> userManager) =>
+            app.MapPost("/api/users/register", async (RegisterModel model, UserManager<IdentityUser> userManager, IValidator<RegisterModel> validator) =>
             {
+                // Validazione custom con struttura custom
+                var validationResult = await validator.ValidateAsync(model);
+                if (!validationResult.IsValid)
+                {
+                    var errors = validationResult.Errors.Select(error => new
+                    {
+                        Field = error.PropertyName,
+                        Error = error.ErrorMessage
+                    });
+
+                    return Results.BadRequest(new { Errors = errors });
+                }
+
                 var user = new IdentityUser
                 {
                     UserName = model.Email,
@@ -36,6 +50,8 @@ namespace WebAppApi.Identity.EndPointsIdentity
             .WithName("RegisterUser")
             .WithTags("Authentication");
         }
+
+
 
 
         public static void MapLoginEndpoint(IEndpointRouteBuilder app)

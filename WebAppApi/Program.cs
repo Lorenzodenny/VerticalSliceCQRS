@@ -13,6 +13,7 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using WebAppApi.Database.Interface;
+using WebAppApi.Identity.Validation;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -99,9 +100,8 @@ var assembly = typeof(Program).Assembly;
 builder.Services.AddValidatorsFromAssembly(assembly);
 builder.Services.AddMediatR(config => config.RegisterServicesFromAssembly(assembly));
 
-//// Validatore personalizzato per identity
-//builder.Services.AddValidatorsFromAssemblyContaining<RegisterModelValidator>();
-
+// Validazione custom per identity ( registrazione )
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterModelValidator>();
 
 var app = builder.Build();
 
