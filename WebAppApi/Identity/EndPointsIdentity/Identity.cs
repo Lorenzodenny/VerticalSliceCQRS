@@ -51,9 +51,6 @@ namespace WebAppApi.Identity.EndPointsIdentity
             .WithTags("Authentication");
         }
 
-
-
-
         public static void MapLoginEndpoint(IEndpointRouteBuilder app)
         {
             app.MapPost("/api/users/login", async (LoginModel model, UserManager<IdentityUser> userManager, IConfiguration configuration) =>
