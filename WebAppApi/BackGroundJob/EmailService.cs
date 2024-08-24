@@ -11,19 +11,23 @@ public class EmailService : IEmailService
         _email = email;
     }
 
-    public async Task<SendResponse> SendWelcomeEmailAsync(string toEmail, string fullName, string confirmLink)
+
+    // Endpoint per le conferme in Identity\routing
+    public async Task<SendResponse> SendWelcomeEmailAsync(string toEmail, string userId, string token)
     {
+        var confirmLink = $"http://localhost:5222/api/users/confirm?userId={userId}&token={token}";
         var email = _email
             .To(toEmail)
             .Subject("Benvenuto su WebAppApi!")
-            .Body($"Ciao {fullName}, benvenuto su WebAppApi! Per confermare la tua registrazione, clicca sul seguente link: {confirmLink}");
+            .Body($"Ciao, benvenuto su WebAppApi! Per confermare la tua registrazione, clicca sul seguente link: {confirmLink}");
 
         return await email.SendAsync();
     }
 
-    public async Task<SendResponse> SendUpdateConfirmationEmailAsync(string toEmail, string userId)
+
+    public async Task<SendResponse> SendUpdateConfirmationEmailAsync(string toEmail, string userId, string token)
     {
-        var confirmLink = $"http://localhost:5222/api/users/confirmUpdate?userId={userId}";
+        var confirmLink = $"http://localhost:5222/api/users/confirmUpdate?userId={userId}&token={token}";
         var email = _email
             .To(toEmail)
             .Subject("Conferma aggiornamento profilo")
@@ -32,9 +36,11 @@ public class EmailService : IEmailService
         return await email.SendAsync();
     }
 
-    public async Task<SendResponse> SendDeleteConfirmationEmailAsync(string toEmail, string userId)
+
+
+    public async Task<SendResponse> SendDeleteConfirmationEmailAsync(string toEmail, string userId, string token)
     {
-        var confirmLink = $"http://localhost:5222/api/users/confirmDelete?userId={userId}";
+        var confirmLink = $"http://localhost:5222/api/users/confirmDelete?userId={userId}&token={token}";
         var email = _email
             .To(toEmail)
             .Subject("Conferma cancellazione profilo")
@@ -42,4 +48,5 @@ public class EmailService : IEmailService
 
         return await email.SendAsync();
     }
+
 }

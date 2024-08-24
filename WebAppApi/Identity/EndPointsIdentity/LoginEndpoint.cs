@@ -14,6 +14,11 @@ public static class LoginEndpoint
             var user = await userManager.FindByEmailAsync(model.Email);
             if (user != null && await userManager.CheckPasswordAsync(user, model.Password))
             {
+                if (!user.EmailConfirmed)
+                {
+                    return Results.BadRequest("L'email non è stata confermata.");
+                }
+
                 var token = GenerateJwtToken(user, configuration);
                 return Results.Ok(new { Token = token });
             }
@@ -26,10 +31,11 @@ public static class LoginEndpoint
     private static string GenerateJwtToken(ApplicationUser user, IConfiguration configuration)
     {
         var claims = new List<Claim>
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        };
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        new Claim("UserId", user.Id)  // Aggiungi un claim personalizzato per l'ID utente
+    };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -45,4 +51,5 @@ public static class LoginEndpoint
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
 }

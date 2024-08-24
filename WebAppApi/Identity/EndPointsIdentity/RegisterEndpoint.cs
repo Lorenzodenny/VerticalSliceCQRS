@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using WebAppApi.BackGroundJob;
 using WebAppApi.Identity.Entities;
+using WebAppApi.ViewModel;
 
 public static class RegisterEndpoint
 {
@@ -30,8 +31,8 @@ public static class RegisterEndpoint
                 UserName = model.Email,
                 Email = model.Email,
                 PhoneNumber = model.PhoneNumber,
-                ConfirmationToken = Guid.NewGuid().ToString(),  // Generazione token
-                TokenExpiryDate = DateTime.UtcNow.AddHours(24)  // Scadenza del token
+                ConfirmationToken = Guid.NewGuid().ToString(),
+                TokenExpiryDate = DateTime.UtcNow.AddHours(24)
             };
             var result = await userManager.CreateAsync(user, model.Password);
 
@@ -44,11 +45,12 @@ public static class RegisterEndpoint
                 }
 
                 // Invia l'email di benvenuto con il token
-                var confirmLink = $"http://localhost:5222/api/users/confirm?userId={user.Id}&token={user.ConfirmationToken}";
-                BackgroundJob.Enqueue(() => emailService.SendWelcomeEmailAsync(model.Email, model.FullName, confirmLink));
+                BackgroundJob.Enqueue(() => emailService.SendWelcomeEmailAsync(model.Email, user.Id, user.ConfirmationToken));
 
+                // Restituisce la ViewModel convertita
+                var userVm = (RegisterModelVm)model;
 
-                return Results.Ok();
+                return Results.Ok(userVm);
             }
             return Results.BadRequest(result.Errors);
         })
