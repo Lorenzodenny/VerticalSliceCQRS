@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebAppApi.Database;
 
@@ -11,9 +12,11 @@ using WebAppApi.Database;
 namespace WebAppApi.Migrations
 {
     [DbContext(typeof(eCommerceDbContext))]
-    partial class eCommerceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240824151101_AddConfirmationTokenAndExpiryDate")]
+    partial class AddConfirmationTokenAndExpiryDate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

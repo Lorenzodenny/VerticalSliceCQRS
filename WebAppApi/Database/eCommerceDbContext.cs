@@ -1,10 +1,11 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Entities;
+using WebAppApi.Identity.Entities;
 
 namespace WebAppApi.Database
 {
-    public class eCommerceDbContext : IdentityDbContext
+    public class eCommerceDbContext : IdentityDbContext<ApplicationUser>
     {
         public eCommerceDbContext(DbContextOptions<eCommerceDbContext> options) : base(options) { }
 

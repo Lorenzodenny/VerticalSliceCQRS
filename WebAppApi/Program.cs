@@ -14,6 +14,15 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using WebAppApi.Database.Interface;
 using WebAppApi.Identity.Validation;
+using Hangfire;
+using FluentEmail.Core;
+using FluentEmail.Smtp;
+using FluentEmail.Razor;
+using System.Net.Mail;
+using System.Net;
+using WebAppApi.BackGroundJob;
+using WebAppApi.Identity.Entities;
+
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,14 +36,33 @@ builder.Logging.SetMinimumLevel(LogLevel.Debug);
 builder.Services.AddDbContext<eCommerceDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Registrazione identity
+builder.Services.AddDefaultIdentity<ApplicationUser>()
+    .AddEntityFrameworkStores<eCommerceDbContext>();
+
+
+
+// Configura il database per Hangfire
+builder.Services.AddHangfire(x => x.UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHangfireServer();
+
+
+// Registro il servizio per l'uso della mail SMTP
+builder.Services.AddFluentEmail(builder.Configuration["Email:FromEmail"])
+    .AddRazorRenderer()
+    .AddSmtpSender(new SmtpClient(builder.Configuration["Email:Smtp:Host"])
+    {
+        Port = int.Parse(builder.Configuration["Email:Smtp:Port"]),
+        Credentials = new NetworkCredential(
+            builder.Configuration["Email:Smtp:User"],
+            builder.Configuration["Email:Smtp:Password"]),
+        EnableSsl = true,
+        UseDefaultCredentials = false
+    });
+
 
 // UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-
-
-// Configura Identity
-builder.Services.AddDefaultIdentity<IdentityUser>()
-    .AddEntityFrameworkStores<eCommerceDbContext>();
 
 
 builder.Services.AddControllers();
@@ -103,7 +131,14 @@ builder.Services.AddMediatR(config => config.RegisterServicesFromAssembly(assemb
 // Validazione custom per identity ( registrazione )
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterModelValidator>();
 
+// Supponendo che EmailService sia la tua classe che implementa l'interfaccia IEmailService
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+
 var app = builder.Build();
+
+// Abilita la dashboard di Hangfire per monitorare i job
+app.UseHangfireDashboard();
 
 // Mappa tutte le rotte presenti in Shared MapRoute
 app.MapEndpoints();
@@ -117,6 +152,10 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "WebAppApi v1");
     });
 }
+
+// Dashboard di hangfire per seguire i job
+app.UseHangfireDashboard();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
