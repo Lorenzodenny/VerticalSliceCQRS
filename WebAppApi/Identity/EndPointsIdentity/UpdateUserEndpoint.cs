@@ -22,7 +22,7 @@ public static class UpdateUserEndpoint
             if (user == null)
                 return Results.NotFound("Utente non trovato.");
 
-            // Aggiorna le informazioni solo se fornite
+            // Aggiorna le informazioni solo se fornite 
             if (!string.IsNullOrEmpty(model.Email) && model.Email != user.Email)
             {
                 user.Email = model.Email;
