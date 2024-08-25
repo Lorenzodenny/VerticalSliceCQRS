@@ -67,6 +67,7 @@ namespace WebAppApi.Features.ExportPDF
                 var result = await mediator.Send(new Query());
                 return Results.File(result, "application/pdf", "UserCartProductDetails.pdf");
             })
+            .RequireAuthorization()
             .WithName("ExportUserCartProductDetailsPdf")
             .WithTags("Export");
         }

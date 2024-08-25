@@ -76,6 +76,7 @@ namespace WebAppApi.Features.ExportExcel
                 var result = await mediator.Send(new Query());
                 return Results.File(result, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "UserCartProductDetails.xlsx");
             })
+            .RequireAuthorization()
             .WithName("ExportUserCartProductDetailsExcel")
             .WithTags("Export");
         }
