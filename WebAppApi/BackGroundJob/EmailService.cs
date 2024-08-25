@@ -1,7 +1,6 @@
 ﻿using FluentEmail.Core.Models;
 using FluentEmail.Core;
 using WebAppApi.BackGroundJob;
-
 public class EmailService : IEmailService
 {
     private readonly IFluentEmail _email;
