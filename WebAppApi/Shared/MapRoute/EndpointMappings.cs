@@ -9,6 +9,8 @@ using WebAppApi.Features.CartProducts.Command;
 using WebAppApi.Features.CartProducts.Query;
 using WebAppApi.Identity;
 using Microsoft.AspNetCore.Identity;
+using WebAppApi.Features.ExportExcel;
+using WebAppApi.Features.ExportPDF;
 // using WebAppApi.Features.CartProducts.Query;
 
 public static class EndpointMappings
@@ -58,6 +60,11 @@ public static class EndpointMappings
         ConfirmEndpoints.MapConfirmEndpoints(app);
     }
 
+    public static void MapExportEndpoints(this WebApplication app)
+    {
+        ExportUserCartProductDetailsPdf.MapEndpoint(app);
+        ExportUserCartProductDetailsExcel.MapEndpoint(app);
+    }
 
 
     public static void MapEndpoints(this WebApplication app)
@@ -67,6 +74,6 @@ public static class EndpointMappings
         app.MapCartEndpoints();
         app.MapCartProductEndpoints();
         app.MapIdentityEndpoints();
-        app.MapExportUserCartProductDetailsEndpoint();
+        app.MapExportEndpoints();
     }
 }
