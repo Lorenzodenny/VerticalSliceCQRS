@@ -67,5 +67,6 @@ public static class EndpointMappings
         app.MapCartEndpoints();
         app.MapCartProductEndpoints();
         app.MapIdentityEndpoints();
+        app.MapExportUserCartProductDetailsEndpoint();
     }
 }
