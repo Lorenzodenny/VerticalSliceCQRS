@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using WebAppApi.Entities;
+using WebAppApi.Entities.View;
 using WebAppApi.Identity.Entities;
 
 namespace WebAppApi.Database
@@ -13,6 +14,8 @@ namespace WebAppApi.Database
         public DbSet<Cart> Carts { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<CartProduct> CartProducts { get; set; }
+
+        public DbSet<VwUserCartProductDetail> VwUserCartProductDetails { get; set; } // vista
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,6 +38,10 @@ namespace WebAppApi.Database
                 .HasOne(c => c.User)
                 .WithOne(u => u.Cart)
                 .HasForeignKey<Cart>(c => c.UserId);
+
+            modelBuilder.Entity<VwUserCartProductDetail>()
+            .HasNoKey()
+            .ToView("vw_UserCartProductDetails");
         }
     }
 }

@@ -64,6 +64,8 @@ public static class EndpointMappings
     {
         ExportUserCartProductDetailsPdf.MapEndpoint(app);
         ExportUserCartProductDetailsExcel.MapEndpoint(app);
+        ExportUserCartProductViewPdf.MapEndpoint(app);
+        ExportUserCartProductViewExcel.MapEndpoint(app);
     }
 
 
